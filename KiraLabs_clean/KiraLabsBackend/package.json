@@ -1,0 +1,27 @@
+{
+  "name": "kiralabsbackend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "prisma:generate": "prisma generate",
+    "studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "axios": "^1.17.0",
+    "bcryptjs": "latest",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "form-data": "^4.0.5",
+    "jsonwebtoken": "latest",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.10"
+  },
+  "devDependencies": {
+    "nodemon": "latest",
+    "prisma": "^6.19.3"
+  }
+}

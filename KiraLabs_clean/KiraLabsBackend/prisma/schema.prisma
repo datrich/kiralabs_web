@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int     @id @default(autoincrement())
+  fullName        String  @map("full_name")
+  avatarUrl       String? @map("avatar_url")
+  dateOfBirth     String? @map("date_of_birth")
+  gender          String  @default("unspecified")
+  email           String? @unique
+  phoneNumber     String? @unique @map("phone_number")
+  role            String  @default("user")
+  isEmailVerified Int     @default(0) @map("is_email_verified")
+  isSuperAdmin    Int     @default(0) @map("is_super_admin")
+
+  credits         Int     @default(20)
+
+  createdAt       String? @map("created_at")
+  updatedAt       String? @map("updated_at")
+  lastLoginAt     String? @map("last_login_at")
+
+  authMethods        UserAuthMethod[]
+  passwordResetCodes PasswordResetCode[]
+  shop               Shop?
+  reviews            Review[]
+
+  @@map("users")
+}
+
+model UserAuthMethod {
+  id           Int     @id @default(autoincrement())
+  userId       Int     @map("user_id")
+  authType     String  @map("auth_type")
+  identifier   String
+  passwordHash String? @map("password_hash")
+
+  createdAt    String? @map("created_at")
+  updatedAt    String? @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([authType, identifier])
+  @@map("user_auth_methods")
+}
+
+model PasswordResetCode {
+  id         Int     @id @default(autoincrement())
+  userId     Int     @map("user_id")
+  authType   String  @map("auth_type")
+  identifier String
+  codeHash   String  @map("code_hash")
+
+  expiresAt  String  @map("expires_at")
+  verifiedAt String? @map("verified_at")
+  usedAt     String? @map("used_at")
+  createdAt  String? @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([authType, identifier])
+  @@map("password_reset_codes")
+}
+
+model HomeCategory {
+  id        Int     @id @default(autoincrement())
+  label     String
+  slug      String  @unique
+  imagePath String  @map("image_path")
+  sortOrder Int     @default(0) @map("sort_order")
+  createdAt String? @map("created_at")
+  updatedAt String? @map("updated_at")
+
+  @@map("home_categories")
+}
+
+model HomeBanner {
+  id         Int     @id @default(autoincrement())
+  title      String
+  subtitle   String?
+  buttonText String? @map("button_text")
+  imagePath  String  @map("image_path")
+  target     String?
+  isActive   Int     @default(1) @map("is_active")
+  sortOrder  Int     @default(0) @map("sort_order")
+  createdAt  String? @map("created_at")
+  updatedAt  String? @map("updated_at")
+
+  @@map("home_banners")
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  slug      String    @unique
+  imageUrl  String?   @map("image_url")
+  createdAt String    @default(dbgenerated("CURRENT_TIMESTAMP")) @map("created_at")
+  updatedAt String    @default(dbgenerated("CURRENT_TIMESTAMP")) @map("updated_at")
+
+  products  Product[]
+
+  @@map("categories")
+}
+
+// ====== SHOP: 1 user co toi da 1 shop. status: pending | approved | rejected ======
+model Shop {
+  id           Int     @id @default(autoincrement())
+  userId       Int     @unique @map("user_id")
+  shopName     String  @map("shop_name")
+  address      String
+  phone        String?
+  description  String?
+  logoUrl      String? @map("logo_url")
+  status       String  @default("pending") // pending | approved | rejected
+  rejectReason String? @map("reject_reason")
+
+  createdAt    String? @map("created_at")
+  updatedAt    String? @map("updated_at")
+  approvedAt   String? @map("approved_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@map("shops")
+}
+
+model Product {
+  id            Int     @id @default(autoincrement())
+  categoryId    Int     @map("category_id")
+  shopId        Int?    @map("shop_id") // null = hang chinh hang Kira (khong thuoc shop nao)
+  name          String
+  description   String?
+  price         Int?
+  imageUrl      String? @map("image_url")
+  clothType     String? @map("cloth_type") // upper | lower | overall (dung cho try-on)
+
+  isActive      Int     @default(1) @map("is_active")
+  isTrending    Int     @default(0) @map("is_trending")
+  isApproved    Int     @default(0) @map("is_approved")     // admin duyet moi hien cong khai
+  tryOnEnabled  Int     @default(1) @map("tryon_enabled")   // 0 = chi de trung bay, khong try-on duoc
+  creditAwarded Int     @default(0) @map("credit_awarded")  // da thuong credit cho shop chua (tranh thuong 2 lan)
+
+  createdAt     String  @default(dbgenerated("CURRENT_TIMESTAMP")) @map("created_at")
+  updatedAt     String  @default(dbgenerated("CURRENT_TIMESTAMP")) @map("updated_at")
+
+  category      Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  shop          Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  reviews       Review[]
+
+  @@map("products")
+}
+
+model TryonHistory {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  imageUrl  String
+  createdAt DateTime @default(now())
+}
+
+// Đánh giá sản phẩm. Mỗi user chỉ 1 review / sản phẩm.
+model Review {
+  id        Int     @id @default(autoincrement())
+  productId Int     @map("product_id")
+  userId    Int     @map("user_id")
+  rating    Int // 1..5
+  comment   String?
+  createdAt String? @map("created_at")
+  updatedAt String? @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([productId])
+  @@map("reviews")
+}
+
+// Thông báo trong app. type: shop_pending | product_pending | shop_approved | shop_rejected
+// | product_approved | product_rejected | new_review | verify_email | admin_granted | admin_revoked
+model Notification {
+  id        Int     @id @default(autoincrement())
+  userId    Int     @map("user_id")
+  type      String
+  title     String
+  body      String?
+  data      String?
+  isRead    Int     @default(0) @map("is_read")
+  createdAt String? @map("created_at")
+
+  @@index([userId])
+  @@map("notifications")
+}
